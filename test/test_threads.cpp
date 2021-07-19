@@ -3,7 +3,6 @@
 #include "win32_log.hpp"
 #include "threading.h"
 
-
 ON_WINDOW_RESIZE(OnWindowResize);
 ON_KEY_PRESSED(OnKeyPressed);
 
@@ -24,16 +23,33 @@ CreateWindowApp(const char * WindowName, win32_window_user_data * WindowUserData
     WindowUserData->HWnd = HWnd;
 }
 
+struct test_thread_data
+{
+    int test;
+};
+
+THREAD_QUEUE_CALLBACK(TestThreadWork)
+{
+    test_thread_data * TestData = (test_thread_data *)Data;
+    Log("Current task data %i\n",TestData->test);
+}
+
 ON_WINDOW_RESIZE(OnWindowResize)
 {
     OutputDebugStringA("Window resized\n");
 }
+
+global_variable int K1Pressed = false;
 
 ON_KEY_PRESSED(OnKeyPressed)
 {
     if (Key == VK_ESCAPE)
     {
         WindowUserData->WindowCloseRequested = true;
+    }
+    if (Key == '1')
+    {
+        K1Pressed = true;
     }
 }
 
@@ -49,10 +65,31 @@ WinMainCRTStartup() /* /SUBSYTEM:windows */
     win32_window_user_data Window;
     CreateWindowApp("Main",&Window);
 
+    thread_work_queue WorkQueue;
+    const uint32 ThreadCount = 12;
+    
+    CreateThreadQueue(&WorkQueue,ThreadCount);
+
     while (!Window.WindowCloseRequested)
     {
+        K1Pressed = false;
+
         HandleInput(Window.HWnd);
-        Log("Win32 defined\n");
+
+        if (K1Pressed)
+        {
+#define ABSURD_NUMBER 2000
+            test_thread_data Data[ABSURD_NUMBER];
+            for (uint32 TaskIndex = 0;
+                    TaskIndex < ABSURD_NUMBER;
+                    ++TaskIndex)
+            {
+                Data[TaskIndex].test = TaskIndex;
+                AddWorkToQueue(&WorkQueue, TestThreadWork,(void *)(Data + TaskIndex));
+            }
+            //QueueCompleteTasks(&WorkQueue);
+            //Log("tasks completed\n");
+        }
     }
 
     ExitProcess(0);

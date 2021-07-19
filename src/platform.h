@@ -24,7 +24,14 @@ typedef double      real64;
 
 #define PI 3.141684f
 
+#if _WIN32 && DEBUG_LOG
+typedef void (*FPTR_Log) (const char *, ...);
+extern FPTR_Log LogHandler;
+#else
+#define Log(format, ...)
+#endif
 
+#define API __declspec(dllexport)
 
 #define PLATFORM_H
 #endif
